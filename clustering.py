@@ -98,17 +98,14 @@ def elbow_method(X, max_range):
         - The Within-Cluster Sum of Squares per amount of cluster
     """
 
-    # Define range of k values to test
     k_values = range(2, max_range+1)  
     inertia_values = []
 
-    # Run K-Means for different values of k and compute WCSS
     inertia_values = Parallel(n_jobs=-1)(
         delayed(lambda k: KMeans(n_clusters=k, random_state=42, n_init=10).fit(X).inertia_)(k)
         for k in k_values
     )
 
-    # Plot the Elbow Method (WCSS vs k)
     plt.figure(figsize=(8, 5))
     plt.plot(k_values, inertia_values, marker='o', linestyle='--', color='b')
     plt.xlabel("Number of Clusters (k)")
@@ -133,22 +130,18 @@ def compute_silhouette_method(X, max_range, n_jobs=-1):
     """
     k_values = range(2, max_range + 1)  
 
-    # Define function to compute silhouette score
     def compute_silhouette(k):
         kmeans = KMeans(n_clusters=k, random_state=42, n_init=10)
         kmeans.fit(X)
         return silhouette_score(X, kmeans.labels_) if k > 1 else None
 
-    # Run K-Means in parallel and compute silhouette scores
     silhouette_scores = Parallel(n_jobs=n_jobs)(
         delayed(compute_silhouette)(k) for k in k_values
     )
 
-    # Remove None values (for k=1, silhouette score is not defined)
     valid_k_values = k_values[:len(silhouette_scores)]
     silhouette_scores = [score for score in silhouette_scores if score is not None]
 
-    # Plot the Silhouette Scores
     plt.figure(figsize=(8, 5))
     plt.plot(valid_k_values, silhouette_scores, marker='s', linestyle='-', color='g')
     plt.xlabel("Number of Clusters (k)")
@@ -156,7 +149,6 @@ def compute_silhouette_method(X, max_range, n_jobs=-1):
     plt.title("Silhouette Score for Optimal k")
     plt.show()
 
-    # Find the optimal k (highest silhouette score)
     optimal_k_silhouette = valid_k_values[np.argmax(silhouette_scores)]
 
     print(f"Optimal number of clusters based on Silhouette Score: {optimal_k_silhouette}")
@@ -173,7 +165,6 @@ def silhouette_method(X, max_range):
     silhouette_scores = []
     k_values = range(2, max_range + 1)  
 
-    # Run K-Means for all the tested values of K
     for k in k_values:
         kmeans = KMeans(n_clusters=k, random_state=42, n_init=10)
         kmeans.fit(X)
@@ -187,7 +178,6 @@ def silhouette_method(X, max_range):
     plt.title("Silhouette Score for Optimal k")
     plt.show()
 
-    # Find the optimal k value: the highest silhouette score
     optimal_k_silhouette = k_values[:len(silhouette_scores)][np.argmax(silhouette_scores)]
 
     print(f"Optimal number of clusters based on Silhouette Score: {optimal_k_silhouette}")
@@ -199,27 +189,21 @@ def visualize_clusters_pca(X_vectors, labels, title="UMAP Visualization of K-Mea
     reducer = umap.UMAP(n_components=2)
     X_umap = reducer.fit_transform(X_vectors)
 
-    # Create a DataFrame for plotting
     df_umap = pd.DataFrame(X_umap, columns=["UMAP1", "UMAP2"])
     df_umap["Cluster"] = labels
 
-    # Create figure and axis if not provided
     if ax is None:
         fig, ax = plt.subplots(figsize=(10, 7))
 
-    # Determine unique clusters
     unique_clusters = np.unique(labels)
 
-    # Generate a discrete color palette with "Set2"
     colors = sns.color_palette("Set2", len(unique_clusters))
 
-    # Plot points for each cluster using the chosen palette
     for cluster, color in zip(unique_clusters, colors):
         cluster_points = df_umap[df_umap["Cluster"] == cluster]
         ax.scatter(cluster_points["UMAP1"], cluster_points["UMAP2"],
                label=f"Cluster {cluster}", color=color, alpha=0.6)
 
-    # Label the axes and set title
     ax.set_xlabel("UMAP Component 1")
     ax.set_ylabel("UMAP Component 2")
     ax.set_title(title)
@@ -296,13 +280,11 @@ def k_means(X, k, df, plus, vectorizer = None, word2vec_model=None):
     num_iterations = kmeans.n_iter_
     print(f"K-Means converged in {num_iterations} iterations.")
 
-    # Create a df to map the patents to a cluster
     df_clusters = pd.DataFrame({
         "patent_id": df["patent_id"],
         "Cluster": labels
     })
 
-    # Get distances to centroids & add them to the cluster
     distances = np.linalg.norm(X - kmeans.cluster_centers_[labels], axis=1)
     df_clusters["DistanceToCentroid"] = distances
     
@@ -310,12 +292,9 @@ def k_means(X, k, df, plus, vectorizer = None, word2vec_model=None):
 
     fig, axes = plt.subplots(1, 2, figsize=(14, 6))
 
-    # To visualize the distribution of clusters
     visualize_dis_clusters(labels, k, ax=axes[0])
 
-    # UMAP Dim Red Special Case
     if vectorizer is None and word2vec_model is None:
-        # Visualize the clusters
         scatter = axes[1].scatter(X[:, 0], X[:, 1], c=labels, s=0.8, cmap='Spectral')
         axes[1].set_title("UMAP Projection of Patents' Corpus")
         axes[1].set_xlabel("UMAP Dimension 1")
@@ -323,13 +302,11 @@ def k_means(X, k, df, plus, vectorizer = None, word2vec_model=None):
         fig.colorbar(scatter, ax=axes[1], label="Cluster")
     
     else:
-        # To visualize the clusters in 2D
         visualize_clusters_pca(X, labels, ax=axes[1])
 
     plt.tight_layout()
     plt.show()
 
-    # If TF-IDF, extract the top 10 words per cluster
     if vectorizer is not None:
         cluster_keywords = top_words_tf(labels, X, vectorizer, kmeans)
 
